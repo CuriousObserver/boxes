@@ -1009,7 +1009,12 @@ class OpenSCADSurface(Surface):
     scale = 1.0
     invert_y = False
 
-    def __init__(self, thickness=3.0) -> None:
+    def __init__(self, thickness: float = 3.0) -> None:
+        """
+        Initialize OpenSCAD surface.
+        
+        :param thickness: Material thickness in millimeters for extrusion height
+        """
         super().__init__()
         self.thickness = thickness
 
@@ -1044,8 +1049,8 @@ class OpenSCADSurface(Surface):
                 x, y = cmd[1], cmd[2]
                 points.append([x, y])
             elif C == "C":
-                # Bezier curve - approximate with the endpoint
-                # For better accuracy, we could sample points along the curve
+                # Bezier curve - use the endpoint (first two coordinates after command)
+                # C command format: ["C", endpoint_x, endpoint_y, cp1_x, cp1_y, cp2_x, cp2_y]
                 x, y = cmd[1], cmd[2]
                 points.append([x, y])
             # Skip text commands
