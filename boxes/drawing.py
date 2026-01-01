@@ -1002,6 +1002,111 @@ class LBRN2Surface(Surface):
         f.seek(0)
         return f
 
+
+class OpenSCADSurface(Surface):
+    """Surface for generating OpenSCAD 3D models from 2D laser cutting paths"""
+
+    scale = 1.0
+    invert_y = False
+
+    def __init__(self, thickness=3.0) -> None:
+        super().__init__()
+        self.thickness = thickness
+
+    def _metadata(self) -> str:
+        """Generate OpenSCAD comment header with metadata"""
+        md = self.metadata
+        
+        desc = "// Boxes.py - {group} - {name}\n".format(**md)
+        if not md["reproducible"]:
+            desc += f'// Creation date: {md["creation_date"].strftime("%Y-%m-%d %H:%M:%S")}\n'
+        desc += f'// Created with Boxes.py (https://boxes.hackerspace-bamberg.de/)\n'
+        
+        if md["short_description"]:
+            desc += f'// {md["short_description"]}\n'
+        
+        if "description" in md and md["description"]:
+            for line in md["description"].split("\n"):
+                desc += f'// {line}\n'
+        
+        desc += f'// Command line: {md["cli"]}\n'
+        if md["url"]:
+            desc += f'// URL: {md["url"]}\n'
+        
+        return desc
+
+    def _path_to_points(self, path):
+        """Convert a path to a list of 2D points for OpenSCAD polygon"""
+        points = []
+        for cmd in path.path:
+            C = cmd[0]
+            if C in ("M", "L"):
+                x, y = cmd[1], cmd[2]
+                points.append([x, y])
+            elif C == "C":
+                # Bezier curve - approximate with the endpoint
+                # For better accuracy, we could sample points along the curve
+                x, y = cmd[1], cmd[2]
+                points.append([x, y])
+            # Skip text commands
+        return points
+
+    def finish(self, inner_corners="loop"):
+        """Generate the final OpenSCAD file"""
+        extents = self._adjust_coordinates()
+        
+        data = io.BytesIO()
+        f = codecs.getwriter('utf-8')(data)
+        
+        # Write header
+        f.write(self._metadata())
+        f.write("\n")
+        f.write(f"// Material thickness: {self.thickness} mm\n")
+        f.write(f"// Bounding box: {extents.width:.2f} x {extents.height:.2f} mm\n")
+        f.write("\n")
+        
+        # Write each part as a separate 3D object
+        part_num = 0
+        for i, part in enumerate(self.parts):
+            if not part.pathes:
+                continue
+            
+            for j, path in enumerate(part.pathes):
+                path.faster_edges(inner_corners)
+                points = self._path_to_points(path)
+                
+                # Only create polygon if we have enough points
+                if len(points) < 3:
+                    continue
+                
+                # Remove duplicate consecutive points
+                unique_points = [points[0]]
+                for p in points[1:]:
+                    if not points_equal(p[0], p[1], unique_points[-1][0], unique_points[-1][1]):
+                        unique_points.append(p)
+                
+                if len(unique_points) < 3:
+                    continue
+                
+                # Write the extruded polygon
+                f.write(f"// Part {part_num}\n")
+                f.write(f"linear_extrude(height = {self.thickness}) {{\n")
+                f.write(f"  polygon(points = [\n")
+                
+                for k, point in enumerate(unique_points):
+                    comma = "," if k < len(unique_points) - 1 else ""
+                    f.write(f"    [{point[0]:.3f}, {point[1]:.3f}]{comma}\n")
+                
+                f.write(f"  ]);\n")
+                f.write(f"}}\n\n")
+                
+                part_num += 1
+        
+        f.flush()
+        data.seek(0)
+        return data
+
+
 from random import random
 
 
