@@ -19,7 +19,7 @@ import shutil
 import subprocess
 import tempfile
 import io
-from boxes.drawing import Context, LBRN2Surface, PSSurface, SVGSurface
+from boxes.drawing import Context, LBRN2Surface, OpenSCADSurface, PSSurface, SVGSurface
 
 
 class Formats:
@@ -27,13 +27,14 @@ class Formats:
     pstoedit_candidates = ["/usr/bin/pstoedit", "pstoedit", r"C:\Program Files\pstoedit\pstoedit.exe", "pstoedit.exe"]
     ps2pdf_candidates = ["/usr/bin/ps2pdf", "ps2pdf", "ps2pdf.exe"]
 
-    _BASE_FORMATS = ['svg', 'svg_Ponoko', 'ps', 'lbrn2']
+    _BASE_FORMATS = ['svg', 'svg_Ponoko', 'ps', 'lbrn2', 'scad']
 
     formats = {
         "svg": None,
         "svg_Ponoko": None,
         "ps": None,
         "lbrn2": None,
+        "scad": None,
         "dxf": "{pstoedit} -flat 0.1 -f dxf:-mm {input} {output}",
         "gcode": "{pstoedit} -f gcode {input} {output}",
         "plt": "{pstoedit} -f hpgl {input} {output}",
@@ -46,6 +47,7 @@ class Formats:
         "svg_Ponoko": [('Content-type', 'image/svg+xml; charset=utf-8')],
         "ps": [('Content-type', 'application/postscript')],
         "lbrn2": [('Content-type', 'application/lbrn2')],
+        "scad": [('Content-type', 'application/x-openscad; charset=utf-8')],
         "dxf": [('Content-type', 'image/vnd.dxf')],
         "plt": [('Content-type', ' application/vnd.hp-hpgl')],
         "gcode": [('Content-type', 'text/plain; charset=utf-8')],
@@ -73,6 +75,8 @@ class Formats:
             surface = SVGSurface()
         elif fmt == "lbrn2":
             surface = LBRN2Surface()
+        elif fmt == "scad":
+            surface = OpenSCADSurface()
         else:
             surface = PSSurface()
 
